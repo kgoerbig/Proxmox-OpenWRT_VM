@@ -1,0 +1,16 @@
+#Reboot 4AM SUN, WED, & SAT
+0 1 * * 0,3,6  sleep 5 && touch /etc/banner && reboot >/dev/null 2>&1 >/dev/null 2>&1
+
+#Restart dnsmasq
+#30 7,19,22 * * * /usr/bin/nwrs >/dev/null 2>&1
+
+
+#Backup luci_stats every hour
+#0 * * * * /etc/init.d/rrdbackup backup
+
+#Restore
+#/etc/init.d/rrdbackup restore
+
+#Reset Luci_Stats every 15min
+#*/15 * * * * /usr/bin/stats-restart >/dev/null 2>&1
+#00 23 * * 0 /etc/init.d/adblock start

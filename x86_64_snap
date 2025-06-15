@@ -1,0 +1,61 @@
+#!/bin/sh
+
+#rm images
+cd /home/kgoerbig/Downloads/x86_64_minipc/images
+rm *.img
+
+#rm builder
+cd /home/kgoerbig/Downloads/x86_64_minipc/
+rm -Rv /home/kgoerbig/Downloads/x86_64_minipc/builder
+
+#Snapshot
+wget https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-imagebuilder-x86-64.Linux-x86_64.tar.zst
+
+#Extract and remove snap
+zstd -d openwrt-imagebuilder-x86-64.Linux-x86_64.tar.zst
+tar -xvf openwrt-imagebuilder-x86-64.Linux-x86_64.tar
+rm openwrt-imagebuilder-x86-64.Linux-x86_64.tar.zst
+rm openwrt-imagebuilder-x86-64.Linux-x86_64.tar
+
+#Move snapshot
+mv /home/kgoerbig/Downloads/x86_64_minipc/openwrt-imagebuilder-x86-64.Linux-x86_64 /home/kgoerbig/Downloads/x86_64_minipc/builder
+
+#Prep Directories
+cd /home/kgoerbig/Downloads/x86_64_minipc/builder/target/linux/x86
+rm *.gz
+cd /home/kgoerbig/Downloads/x86_64_minipc/builder/target/linux/x86/image
+rm *.img
+cd /home/kgoerbig/Downloads/x86_64_minipc/builder
+
+#Config Files
+cp -R /home/kgoerbig/Downloads/x86_64_minipc/files.backup /home/kgoerbig/Downloads/x86_64_minipc/builder
+mv /home/kgoerbig/Downloads/x86_64_minipc/builder/files.backup /home/kgoerbig/Downloads/x86_64_minipc/builder/files 
+cd /home/kgoerbig/Downloads/x86_64_minipc/builder/files/
+tar -xvzf *.tar.gz 
+cd /home/kgoerbig/Downloads/x86_64_minipc/builder
+
+#Resize Partitions
+sed -i 's/CONFIG_TARGET_KERNEL_PARTSIZE=.*/CONFIG_TARGET_KERNEL_PARTSIZE=32/' .config
+sed -i 's/CONFIG_TARGET_ROOTFS_PARTSIZE=.*/CONFIG_TARGET_ROOTFS_PARTSIZE=900/' .config
+
+#Build OpenWRT
+make clean
+make image RELEASE="" FILES="files" PACKAGES="blkid bmon htop ifstat iftop iperf3 iwinfo lsblk lscpu lsblk losetup resize2fs nano rsync rtorrent tcpdump adblock arp-scan blkid bmon kmod-usb-storage kmod-usb-storage-uas rsync kmod-fs-exfat kmod-fs-ext4 kmod-fs-ksmbd kmod-fs-nfs kmod-fs-nfs-common kmod-fs-nfs-v3 kmod-fs-nfs-v4 kmod-fs-ntfs pppoe-discovery kmod-pppoa comgt ppp-mod-pppoa rp-pppoe-common luci luci-app-adblock luci-app-adblock-fast luci-app-commands luci-app-ddns luci-app-firewall luci-app-nlbwmon luci-app-opkg luci-app-samba4 luci-app-softether luci-app-statistics luci-app-unbound luci-app-upnp luci-app-watchcat block-mount ppp kmod-pppoe ppp-mod-pppoe luci-proto-ppp luci-proto-pppossh luci-proto-ipv6" DISABLED_SERVICES="adblock banip gpio_switch lm-sensors softethervpnclient" 
+
+#mv img's
+cd /home/kgoerbig/Downloads/x86_64_minipc/builder/bin/targets/x86/64/
+rm *squashfs*
+gunzip *.img.gz
+mv *.img /home/kgoerbig/Downloads/x86_64_minipc/images
+cd /home/kgoerbig/Downloads/x86_64_minipc/images
+
+#Remote sync
+ssh -l root 192.168.1.11 "rm -Rv /mnt/pve/TB_VM/openwrt_images/snap/*.img"
+ssh -l root 192.168.1.11 "rm -Rv /mnt/pve/WD-5TB/openwrt_backup/snap/*.img"
+
+rsync -av /home/kgoerbig/Downloads/x86_64_minipc/images/*.img root@192.168.1.11:/mnt/pve/TB_VM/openwrt_images/snap/
+rsync -av /home/kgoerbig/Downloads/x86_64_minipc/images/*.img root@192.168.1.11:/mnt/pve/WD-5TB/openwrt_backup/snap/
+
+#SSH to VM OpenWRT
+#ssh -l root 192.168.1.1 -p 7766 "rm -Rv /mnt/backup/*.img"
+#rsync -av /home/kgoerbig/Downloads/x86_64_minipc/images/*.img root@192.168.1.1:/mnt/backup/

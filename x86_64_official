@@ -1,0 +1,52 @@
+#!/bin/sh
+
+#rm images
+cd /home/kgoerbig/Downloads/x86_64_minipc/images
+rm *.img
+
+#rm builder
+cd /home/kgoerbig/Downloads/x86_64_minipc/
+rm -Rv /home/kgoerbig/Downloads/x86_64_minipc/builder
+
+#Official
+wget https://downloads.openwrt.org/releases/23.05.5/targets/x86/64/openwrt-imagebuilder-23.05.5-x86-64.Linux-x86_64.tar.xz
+
+#Official
+tar -xf openwrt-imagebuilder-23.05.5-x86-64.Linux-x86_64.tar.xz
+rm openwrt-imagebuilder-23.05.5-x86-64.Linux-x86_64.tar.xz
+
+
+#Move snapshot
+mv openwrt-imagebuilder-23.05.5-x86-64.Linux-x86_64 builder
+
+#Prep Directories
+cd /home/kgoerbig/Downloads/x86_64_minipc/builder/target/linux/x86
+rm *.gz
+cd /home/kgoerbig/Downloads/x86_64_minipc/builder/target/linux/x86/image
+rm *.img
+cd /home/kgoerbig/Downloads/x86_64_minipc/builder
+
+#Config Files
+cp -R /home/kgoerbig/Downloads/x86_64_minipc/files.backup /home/kgoerbig/Downloads/x86_64_minipc/builder
+mv /home/kgoerbig/Downloads/x86_64_minipc/builder/files.backup /home/kgoerbig/Downloads/x86_64_minipc/builder/files 
+
+
+#Resize Partitions
+sed -i 's/CONFIG_TARGET_KERNEL_PARTSIZE=.*/CONFIG_TARGET_KERNEL_PARTSIZE=32/' .config
+sed -i 's/CONFIG_TARGET_ROOTFS_PARTSIZE=.*/CONFIG_TARGET_ROOTFS_PARTSIZE=900/' .config
+
+#builder OpenWRT
+make clean
+make image RELEASE="23.05.5" PROFILE="x86_64" FILES="files" PACKAGES="cfdisk cgdisk gdisk parted sfdisk sgdisk blkid bmon htop ifstat iftop iperf3 iwinfo lsblk lscpu lsblk fdisk losetup resize2fs nano rsync rtorrent tcpdump adblock arp-scan blkid bmon kmod-usb-storage kmod-usb-storage-uas rsync kmod-fs-exfat kmod-fs-ext4 kmod-fs-ksmbd kmod-fs-nfs kmod-fs-nfs-common kmod-fs-nfs-v3 kmod-fs-nfs-v4 kmod-fs-ntfs pppoe-discovery kmod-pppoa comgt ppp-mod-pppoa rp-pppoe-common luci luci-app-adblock luci-app-adblock-fast luci-app-commands luci-app-ddns luci-app-firewall luci-app-nlbwmon luci-app-opkg luci-app-samba4 luci-app-softether luci-app-statistics luci-app-unbound luci-app-upnp luci-app-watchcat block-mount ppp kmod-pppoe ppp-mod-pppoe luci-proto-ppp luci-proto-pppossh luci-proto-ipv6" DISABLED_SERVICES="adblock banip gpio_switch lm-sensors softethervpnclient" 
+
+#mv img's
+cd /home/kgoerbig/Downloads/x86_64_minipc/builder/bin/targets/x86/64/
+rm *squashfs*
+gunzip *.img.gz
+mv *.img /home/kgoerbig/Downloads/x86_64_minipc/images
+cd /home/kgoerbig/Downloads/x86_64_minipc/images
+
+#Remote sync
+ssh -l root 192.168.1.11 "rm -Rv /mnt/pve/WD-5TB/openwrt_backup/official/*.img"
+rsync -av /home/kgoerbig/Downloads/x86_64_minipc/images/*.img root@192.168.1.11:/mnt/pve/WD-5TB/openwrt_backup/official
+

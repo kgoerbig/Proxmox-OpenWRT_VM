@@ -1,0 +1,16 @@
+#!/bin/sh
+apk update
+
+#APK add
+apk add block-mount e2fsprogs kmod-usb-storage-uas kmod-usb3 kmod-fs-ext4 collectd-mod-ethstat collectd-mod-ipstatistics collectd-mod-irq collectd-mod-load collectd-mod-ping collectd-mod-powerdns collectd-mod-sqm collectd-mod-thermal collectd-mod-wireless collectd-mod-cpu collectd-mod-cpufreq collectd-mod-csv collectd-mod-curl collectd-mod-df collectd-mod-dns collectd-mod-filecount collectd-mod-interface collectd-mod-ipstatistics collectd-mod-iwinfo collectd-mod-netlink collectd-mod-network collectd-mod-memory collectd-mod-mysql collectd-mod-netlink collectd-mod-network collectd-mod-ping collectd-mod-processes collectd-mod-protocols collectd-mod-sensors collectd-mod-statsd collectd-mod-swap collectd-mod-syslog collectd-mod-table collectd-mod-tail collectd-mod-thermal collectd-mod-threshold
+
+#mkdir rrd dir
+mkdir /mnt/rrd
+chmod -R 777 /mnt/rrd
+
+#Restore luci_stats
+#/etc/init.d/rrdbackup restore
+#/etc/init.d/rrdbackup reload
+#/etc/init.d/rrdbackup restart
+/etc/init.d/luci_statistics restart
+

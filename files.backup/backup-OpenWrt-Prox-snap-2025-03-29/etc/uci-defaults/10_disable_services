@@ -1,0 +1,5 @@
+/etc/init.d/adblock disable
+/etc/init.d/gpio_switch disable
+/etc/init.d/softethervpnclient disable
+
+exit 0
