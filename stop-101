@@ -1,0 +1,2 @@
+#!/bin/sh
+qm stop 101

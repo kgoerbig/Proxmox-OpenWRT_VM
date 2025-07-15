@@ -1,12 +1,12 @@
 #!/bin/sh
 
 #rm images
-cd /mnt/5TB/x86_64_minipc/images
+cd /mnt/8TB/x86_64_minipc/images
 rm *.img
 
 #rm builder
-cd /mnt/5TB/x86_64_minipc/
-rm -Rv /mnt/5TB/x86_64_minipc/builder
+cd /mnt/8TB/x86_64_minipc/
+rm -Rv /mnt/8TB/x86_64_minipc/builder
 rm  *.tar.zst
 
 #Official Snapshot
@@ -21,25 +21,25 @@ rm openwrt-imagebuilder-x86-64.Linux-x86_64.tar
 clear
 
 #Move snapshot
-mv /mnt/5TB/x86_64_minipc/openwrt-imagebuilder-x86-64.Linux-x86_64 /mnt/5TB/x86_64_minipc/builder
+mv /mnt/8TB/x86_64_minipc/openwrt-imagebuilder-x86-64.Linux-x86_64 /mnt/8TB/x86_64_minipc/builder
 
 #Prep Directories
-cd /mnt/5TB/x86_64_minipc/builder/target/linux/x86
+cd /mnt/8TB/x86_64_minipc/builder/target/linux/x86
 rm *.gz
-cd /mnt/5TB/x86_64_minipc/builder/target/linux/x86/image
+cd /mnt/8TB/x86_64_minipc/builder/target/linux/x86/image
 rm *.img
-cd /mnt/5TB/x86_64_minipc/builder
+cd /mnt/8TB/x86_64_minipc/builder
 clear
 
 #Config Files
-rm -Rv /mnt/5TB/x86_64_minipc/builder/files
-cp -R /mnt/5TB/x86_64_minipc/files.backup /mnt/5TB/x86_64_minipc/builder
-mv /mnt/5TB/x86_64_minipc/builder/files.backup /mnt/5TB/x86_64_minipc/builder/files 
-cd /mnt/5TB/x86_64_minipc/builder/files/
+rm -Rv /mnt/8TB/x86_64_minipc/builder/files
+cp -R /mnt/8TB/x86_64_minipc/files.backup /mnt/8TB/x86_64_minipc/builder
+mv /mnt/8TB/x86_64_minipc/builder/files.backup /mnt/8TB/x86_64_minipc/builder/files 
+cd /mnt/8TB/x86_64_minipc/builder/files/
 tar -xvzf *.tar.gz 
-cd /mnt/5TB/x86_64_minipc/builder
-rsync -av /mnt/5TB/x86_64_minipc/files.backup /mnt/1TB/x86_64_minipc
-rsync -av /mnt/5TB/x86_64_minipc/files.backup /mnt/5TB/x86_64_minipc
+cd /mnt/8TB/x86_64_minipc/builder
+rsync -av /mnt/8TB/x86_64_minipc/files.backup /mnt/1TB/x86_64_minipc
+rsync -av /mnt/8TB/x86_64_minipc/files.backup /mnt/8TB/x86_64_minipc
 clear
 
 #Resize Partitions
@@ -51,12 +51,12 @@ make clean
 make image RELEASE="" FILES="files" PACKAGES="blkid bmon htop ifstat iftop iperf3 iwinfo lsblk lscpu lsblk losetup resize2fs nano rsync rtorrent tcpdump adblock arp-scan blkid bmon kmod-usb-storage kmod-usb-storage-uas rsync kmod-fs-exfat kmod-fs-ext4 kmod-fs-ksmbd kmod-fs-nfs kmod-fs-nfs-common kmod-fs-nfs-v3 kmod-fs-nfs-v4 pppoe-discovery kmod-pppoa comgt ppp-mod-pppoa rp-pppoe-common luci luci-app-adblock luci-app-adblock-fast luci-app-commands luci-app-ddns luci-app-firewall luci-app-nlbwmon luci-app-opkg luci-app-samba4 luci-app-softether luci-app-statistics luci-app-unbound luci-app-upnp luci-app-watchcat block-mount ppp kmod-pppoe ppp-mod-pppoe luci-proto-ppp luci-proto-pppossh luci-proto-ipv6" DISABLED_SERVICES="adblock banip gpio_switch lm-sensors softethervpnclient"
 
 #mv img's
-cd /mnt/5TB/x86_64_minipc/builder/bin/targets/x86/64/
+cd /mnt/8TB/x86_64_minipc/builder/bin/targets/x86/64/
 rm *squashfs*
 gunzip *.img.gz
-mv *.img /mnt/5TB/x86_64_minipc/images/snap
-ls /mnt/5TB/x86_64_minipc/images/snap | grep raw
-cd /mnt/5TB/x86_64_minipc/
+mv *.img /mnt/8TB/x86_64_minipc/images/snap
+ls /mnt/8TB/x86_64_minipc/images/snap | grep raw
+cd /mnt/8TB/x86_64_minipc/
 
 ############BUILD VM#######################
 
@@ -93,18 +93,17 @@ qm set $VM_ID --scsi0 none
 #stableVersion="${BASH_REMATCH[1]}"
 
 # Rename the extracted img
-rm /mnt/5TB/x86_64_minipc/images/snap/openwrt.raw
-mv /mnt/5TB/x86_64_minipc/images/snap/openwrt-x86-64-generic-ext4-combined.img /mnt/5TB/x86_64_minipc/images/snap/openwrt.raw
+rm /mnt/8TB/x86_64_minipc/images/snap/openwrt.raw
+mv /mnt/8TB/x86_64_minipc/images/snap/openwrt-x86-64-generic-ext4-combined.img /mnt/8TB/x86_64_minipc/images/snap/openwrt.raw
 
 # Increase the raw disk to 1024 MB
-qemu-img resize -f raw /mnt/5TB/x86_64_minipc/images/snap/openwrt.raw $VM_DISK_SIZE
+qemu-img resize -f raw /mnt/8TB/x86_64_minipc/images/snap/openwrt.raw $VM_DISK_SIZE
 
 # Import the disk to the openwrt vm
-qm importdisk $VM_ID /mnt/5TB/x86_64_minipc/images/snap/openwrt.raw $STORAGE_NAME
+qm importdisk $VM_ID /mnt/8TB/x86_64_minipc/images/snap/openwrt.raw $STORAGE_NAME
 
 # Attach imported disk to VM
 qm set $VM_ID --virtio0 $STORAGE_NAME:vm-$VM_ID-disk-0.raw
 
 # Set boot disk
 qm set $VM_ID --bootdisk virtio0
-
