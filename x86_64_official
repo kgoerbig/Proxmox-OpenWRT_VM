@@ -1,52 +1,107 @@
 #!/bin/sh
 
 #rm images
-cd /home/kgoerbig/Downloads/x86_64_minipc/images
+cd /mnt/1TB/x86_64_minipc/official/images
 rm *.img
 
 #rm builder
-cd /home/kgoerbig/Downloads/x86_64_minipc/
-rm -Rv /home/kgoerbig/Downloads/x86_64_minipc/builder
+cd /mnt/1TB/x86_64_minipc/official/
+rm -Rv openwrt-imagebuilder-24.10.3-x86-64.Linux-x86_64*
+rm -Rv /mnt/1TB/x86_64_minipc/official/builder
 
-#Official
-wget https://downloads.openwrt.org/releases/23.05.5/targets/x86/64/openwrt-imagebuilder-23.05.5-x86-64.Linux-x86_64.tar.xz
+#Official 24.10.3 
+wget https://archive.openwrt.org/releases/24.10.3/targets/x86/64/openwrt-imagebuilder-24.10.3-x86-64.Linux-x86_64.tar.zst
 
-#Official
-tar -xf openwrt-imagebuilder-23.05.5-x86-64.Linux-x86_64.tar.xz
-rm openwrt-imagebuilder-23.05.5-x86-64.Linux-x86_64.tar.xz
-
+#Extract and remove snap
+zstd -d openwrt-imagebuilder-24.10.3-x86-64.Linux-x86_64.tar.zst
+tar -xvf openwrt-imagebuilder-24.10.3-x86-64.Linux-x86_64.tar
+rm openwrt-imagebuilder-24.10.3-x86-64.Linux-x86_64.tar
+rm openwrt-imagebuilder-24.10.3-x86-64.Linux-x86_64.tar.zst
+clear
 
 #Move snapshot
-mv openwrt-imagebuilder-23.05.5-x86-64.Linux-x86_64 builder
+cd /mnt/1TB/x86_64_minipc/official/
+mv openwrt-imagebuilder-24.10.3-x86-64.Linux-x86_64 builder
+chmod -R 755 builder
 
 #Prep Directories
-cd /home/kgoerbig/Downloads/x86_64_minipc/builder/target/linux/x86
+cd /mnt/1TB/x86_64_minipc/official/builder/target/linux/x86
 rm *.gz
-cd /home/kgoerbig/Downloads/x86_64_minipc/builder/target/linux/x86/image
+cd /mnt/1TB/x86_64_minipc/official/builder/target/linux/x86/image
 rm *.img
-cd /home/kgoerbig/Downloads/x86_64_minipc/builder
+cd /mnt/1TB/x86_64_minipc/official/builder
+clear
 
 #Config Files
-cp -R /home/kgoerbig/Downloads/x86_64_minipc/files.backup /home/kgoerbig/Downloads/x86_64_minipc/builder
-mv /home/kgoerbig/Downloads/x86_64_minipc/builder/files.backup /home/kgoerbig/Downloads/x86_64_minipc/builder/files 
-
+rm -Rv /mnt/1TB/x86_64_minipc/official/builder/files
+cp -R /mnt/1TB/x86_64_minipc/files.backup/official /mnt/1TB/x86_64_minipc/files.backup/official/builder
+mv /mnt/1TB/x86_64_minipc/files.backup/official /mnt/1TB/x86_64_minipc/official/builder/files 
+cd /mnt/1TB/x86_64_minipc/official/builder/files
+tar -xvzf backup-OpenWrt-Prox-Official*
+cd /mnt/1TB/x86_64_minipc/official/builder
+clear
 
 #Resize Partitions
 sed -i 's/CONFIG_TARGET_KERNEL_PARTSIZE=.*/CONFIG_TARGET_KERNEL_PARTSIZE=32/' .config
-sed -i 's/CONFIG_TARGET_ROOTFS_PARTSIZE=.*/CONFIG_TARGET_ROOTFS_PARTSIZE=900/' .config
+sed -i 's/CONFIG_TARGET_ROOTFS_PARTSIZE=.*/CONFIG_TARGET_ROOTFS_PARTSIZE=400/' .config
 
-#builder OpenWRT
+#Build OpenWRT
 make clean
-make image RELEASE="23.05.5" PROFILE="x86_64" FILES="files" PACKAGES="cfdisk cgdisk gdisk parted sfdisk sgdisk blkid bmon htop ifstat iftop iperf3 iwinfo lsblk lscpu lsblk fdisk losetup resize2fs nano rsync rtorrent tcpdump adblock arp-scan blkid bmon kmod-usb-storage kmod-usb-storage-uas rsync kmod-fs-exfat kmod-fs-ext4 kmod-fs-ksmbd kmod-fs-nfs kmod-fs-nfs-common kmod-fs-nfs-v3 kmod-fs-nfs-v4 kmod-fs-ntfs pppoe-discovery kmod-pppoa comgt ppp-mod-pppoa rp-pppoe-common luci luci-app-adblock luci-app-adblock-fast luci-app-commands luci-app-ddns luci-app-firewall luci-app-nlbwmon luci-app-opkg luci-app-samba4 luci-app-softether luci-app-statistics luci-app-unbound luci-app-upnp luci-app-watchcat block-mount ppp kmod-pppoe ppp-mod-pppoe luci-proto-ppp luci-proto-pppossh luci-proto-ipv6" DISABLED_SERVICES="adblock banip gpio_switch lm-sensors softethervpnclient" 
+make image RELEASE="" FILES="files" PACKAGES="blkid bmon htop ifstat iftop iperf3 iwinfo lsblk lscpu lsblk losetup resize2fs nano rsync rtorrent tcpdump arp-scan blkid bmon kmod-usb-storage kmod-usb-storage-uas rsync kmod-fs-exfat kmod-fs-ext4 kmod-fs-ksmbd kmod-fs-nfs kmod-fs-nfs-common kmod-fs-nfs-v3 kmod-fs-nfs-v4 pppoe-discovery kmod-pppoa comgt ppp-mod-pppoa rp-pppoe-common luci luci-app-commands luci-app-ddns luci-app-firewall luci-app-nlbwmon luci-app-opkg luci-app-samba4 luci-app-softether luci-app-upnp luci-app-watchcat block-mount ppp kmod-pppoe ppp-mod-pppoe luci-proto-ppp luci-proto-pppossh luci-proto-ipv6" DISABLED_SERVICES="banip gpio_switch lm-sensors softethervpnclient ethtool"
 
 #mv img's
-cd /home/kgoerbig/Downloads/x86_64_minipc/builder/bin/targets/x86/64/
+cd /mnt/1TB/x86_64_minipc/official/builder/bin/targets/x86/64/
 rm *squashfs*
 gunzip *.img.gz
-mv *.img /home/kgoerbig/Downloads/x86_64_minipc/images
-cd /home/kgoerbig/Downloads/x86_64_minipc/images
+mv *.img /mnt/1TB/x86_64_minipc/official/images
+cd /mnt/1TB/x86_64_minipc/official/
 
-#Remote sync
-ssh -l root 192.168.1.11 "rm -Rv /mnt/pve/WD-5TB/openwrt_backup/official/*.img"
-rsync -av /home/kgoerbig/Downloads/x86_64_minipc/images/*.img root@192.168.1.11:/mnt/pve/WD-5TB/openwrt_backup/official
+#Del & Kill 101
+qm stop 101
+qm destroy 101
 
+############BUILD VM#######################
+
+#!/bin/bash
+
+# Define variables
+VM_ID=101
+VM_NAME="OpenWRT-Prox-Official"
+VM_MEMORY=512
+VM_CPU=4
+VM_DISK_SIZE="500M"
+VM_NET="model=virtio,bridge=vmbr0,macaddr=BC:24:11:F8:BB:28"
+VM_NET_a="model=virtio,bridge=vmbr1,macaddr=BC:24:11:35:C1:A8"
+STORAGE_NAME="local-lvm"
+VM_IP="192.168.1.1"
+PROXMOX_NODE="PVE"
+
+# Create new VM
+qm create $VM_ID --name $VM_NAME --memory $VM_MEMORY --net0 $VM_NET --net1 $VM_NET_a --cores $VM_CPU --ostype l26 --sockets 1
+
+# Remove default hard drive
+qm set $VM_ID --scsi0 none
+
+# Lookup the latest stable version number
+#regex='<strong>Current Stable Release - OpenWrt ([^/]*)<\/strong>'
+#response=$(curl -s https://openwrt.org)
+#[[ $response =~ $regex ]]
+#stableVersion="${BASH_REMATCH[1]}"
+
+
+# Rename the extracted img
+rm /mnt/1TB/x86_64_minipc/official/images/openwrt.raw
+mv /mnt/1TB/x86_64_minipc/official/images/openwrt-24.10.3-x86-64-generic-ext4-combined.img /mnt/1TB/x86_64_minipc/official/images/openwrt.raw
+
+
+# Increase the raw disk to 1024 MB
+qemu-img resize -f raw /mnt/1TB/x86_64_minipc/official/images/openwrt.raw $VM_DISK_SIZE
+
+# Import the disk to the openwrt vm
+qm importdisk $VM_ID /mnt/1TB/x86_64_minipc/official/images/openwrt.raw $STORAGE_NAME
+
+# Attach imported disk to VM
+qm set $VM_ID --virtio0 $STORAGE_NAME:vm-$VM_ID-disk-0.raw
+
+# Set boot disk
+qm set $VM_ID --bootdisk virtio0
