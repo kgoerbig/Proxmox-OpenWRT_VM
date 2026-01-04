@@ -1,0 +1,25 @@
+#!/bin/bash
+
+#rm images
+cd /mnt/1TB/x86_64_minipc/images
+rm *.img
+
+#rm builder
+cd /mnt/1TB/x86_64_minipc/
+rm -Rv openwrt-imagebuilder-x86-64.Linux-x86_64.tar*
+rm -Rv /mnt/1TB/x86_64_minipc/builder
+cd /mnt/1TB/x86_64_minipc/
+
+DOWNLOAD_URL="https://downloads.openwrt.org/snapshots/targets/x86/64/openwrt-imagebuilder-x86-64.Linux-x86_64.tar.zst"
+OUTPUT_FILE="openwrt-imagebuilder-x86-64.Linux-x86_64.tar.zst"
+
+if command -v curl &> /dev/null; then
+    echo "Using curl to download $DOWNLOAD_URL"
+    curl -L -o "$OUTPUT_FILE" "$DOWNLOAD_URL"
+elif command -v wget &> /dev/null; then
+    echo "Using wget to download $DOWNLOAD_URL"
+    wget -O "$OUTPUT_FILE" "$DOWNLOAD_URL"
+else
+    echo "Error: neither curl nor wget is installed. Cannot download file." >&2
+    exit 1
+fi
