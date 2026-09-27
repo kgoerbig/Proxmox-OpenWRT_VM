@@ -1,0 +1,4 @@
+#!/bin/sh
+find /mnt/1TB_internal/proxmox-backup -maxdepth 1 -type f -name 'pve-backup-pve.prox9*' -mtime +2 -delete >> /var/log/pve-backup-clean.log 2>&1
+
+ls -l /mnt/1TB_internal/proxmox-backup

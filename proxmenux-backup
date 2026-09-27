@@ -1,0 +1,9 @@
+#!/bin/sh
+
+rsync -av /var/backups/proxmenux /mnt/EXT-8TB/proxmox_backup
+
+rsync -av /mnt/pve/EXT-8TB/proxmox_backup /mnt/1TB_internal
+
+rsync -av /mnt/pve/EXT-8TB/proxmox_backup /mnt/1TB_dock_3.5
+
+

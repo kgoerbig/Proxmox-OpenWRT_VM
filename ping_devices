@@ -1,0 +1,18 @@
+#!/bin/sh
+
+#DumbAPs
+ping -c 25 192.168.1.143
+ping -c 25 192.168.1.144
+ping -c 25 192.168.1.145
+
+#OpenWRT
+ping -c 25 192.168.1.1
+
+#Ping google
+ping -c 25 google.com
+
+#Ping Avaya
+ping -c 25 192.168.1.202
+
+
+

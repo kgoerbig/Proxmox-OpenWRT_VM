@@ -1,0 +1,28 @@
+#!/bin/sh
+
+cp -Rv /mnt/temp/proxmox-backup/bin /usr/local/
+
+cp -Rv /mnt/temp/proxmox-backup/etc/network /etc
+
+cp -Rv /mnt/temp/proxmox-backup/etc/motd /etc
+
+cp -Rv /mnt/temp/proxmox-backup/etc/apt /etc
+
+cp -Rv /mnt/temp/proxmox-backup/etc/host* /etc
+
+mkdir /mnt/1TB_internal
+mkdir /mnt/8TB
+mkdir /mnt/1TB_dock
+mkdir /mnt/2TB_dock
+
+chmod -R 777 /mnt/1TB_internal
+chmod -R 777 /mnt/8TB
+chmod -R 777 /mnt/1TB_dock
+chmod -R 777 /mnt/2TB_dock
+
+cp -Rv /mnt/temp/proxmox-backup/etc/fstab /etc
+
+#Network Balance
+echo tcp_bbr >| /etc/modules-load.d/bbr.conf echo 'net.ipv4.tcp_congestion_control = bbr' >| /etc/sysctl.d/90-bbr.conf
+
+shutdown -r now

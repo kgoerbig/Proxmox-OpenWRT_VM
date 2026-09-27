@@ -1,0 +1,185 @@
+#!/bin/bash
+
+# Pre-defined backup directories
+DIR_OPTIONS=(
+    "/mnt/temp/dump"
+    "/mnt/1TB_internal/dump"
+)
+
+# Custom mount point for manually selected drives
+CUSTOM_MOUNT="/mnt/custom_restore"
+
+echo "========================================"
+echo " Select Backup Location"
+echo "========================================"
+
+# Display default options
+MENU_INDEX=1
+for dir in "${DIR_OPTIONS[@]}"; do
+    if [ -d "$dir" ]; then
+        echo "  $MENU_INDEX) $dir"
+    else
+        echo "  $MENU_INDEX) $dir [UNAVAILABLE / NOT MOUNTED]"
+    fi
+    ((MENU_INDEX++))
+done
+
+# Add option for mounting a block device
+CUSTOM_OPTION_INDEX=$MENU_INDEX
+echo "  $CUSTOM_OPTION_INDEX) Scan and mount a device (/dev/sd*)"
+echo "========================================"
+
+read -p "Select option [1-$CUSTOM_OPTION_INDEX]: " DIR_CHOICE
+
+# Process Custom Drive Mount Option
+if [ "$DIR_CHOICE" -eq "$CUSTOM_OPTION_INDEX" ]; then
+    echo ""
+    echo "Scanning available disk partitions starting with /dev/sd..."
+    
+    # Gather partition names matching /dev/sd* (ignoring whole disks without partition numbers)
+    mapfile -t DEV_LIST < <(lsblk -ln -o NAME,TYPE,SIZE,FSTYPE,LABEL,MOUNTPOINT | grep -E '^sd[a-z][0-9]+' | awk '$2=="part" {print $0}')
+
+    if [ ${#DEV_LIST[@]} -eq 0 ]; then
+        echo "Error: No /dev/sd* partitions detected."
+        exit 1
+    fi
+
+    echo "----------------------------------------"
+    echo "Available /dev/sd* Partitions:"
+    echo "----------------------------------------"
+    for i in "${!DEV_LIST[@]}"; do
+        echo "  $((i+1))) /dev/${DEV_LIST[$i]}"
+    done
+    echo "----------------------------------------"
+
+    read -p "Select partition to mount [1-${#DEV_LIST[@]}]: " DEV_CHOICE
+
+    if ! [[ "$DEV_CHOICE" =~ ^[0-9]+$ ]] || [ "$DEV_CHOICE" -lt 1 ] || [ "$DEV_CHOICE" -gt "${#DEV_LIST[@]}" ]; then
+        echo "Error: Invalid device selection."
+        exit 1
+    fi
+
+    # Extract target device path (e.g., /dev/sda1)
+    SELECTED_DEV="/dev/$(echo "${DEV_LIST[$((DEV_CHOICE-1))]}" | awk '{print $1}')"
+    
+    # Check current mountpoint if already mounted
+    EXISTING_MOUNT=$(lsblk -ln -o MOUNTPOINT "$SELECTED_DEV")
+
+    if [ -n "$EXISTING_MOUNT" ]; then
+        echo "Device $SELECTED_DEV is already mounted at: $EXISTING_MOUNT"
+        SELECTED_DIR="$EXISTING_MOUNT"
+        if [ -d "$SELECTED_DIR/dump" ]; then
+            SELECTED_DIR="$SELECTED_DIR/dump"
+        fi
+    else
+        echo "Mounting $SELECTED_DEV to $CUSTOM_MOUNT..."
+        mkdir -p "$CUSTOM_MOUNT"
+        mount "$SELECTED_DEV" "$CUSTOM_MOUNT"
+        if [ $? -ne 0 ]; then
+            echo "Error: Failed to mount $SELECTED_DEV."
+            exit 1
+        fi
+        
+        # Check if backups are inside a 'dump' subfolder or root of mount
+        if [ -d "$CUSTOM_MOUNT/dump" ]; then
+            SELECTED_DIR="$CUSTOM_MOUNT/dump"
+        else
+            SELECTED_DIR="$CUSTOM_MOUNT"
+        fi
+    fi
+
+else
+    # Process Standard Menu Choice
+    if ! [[ "$DIR_CHOICE" =~ ^[0-9]+$ ]] || [ "$DIR_CHOICE" -lt 1 ] || [ "$DIR_CHOICE" -ge "$CUSTOM_OPTION_INDEX" ]; then
+        echo "Error: Invalid selection."
+        exit 1
+    fi
+
+    SELECTED_DIR="${DIR_OPTIONS[$((DIR_CHOICE-1))]}"
+
+    # Verify directory exists
+    if [ ! -d "$SELECTED_DIR" ]; then
+        echo "Error: Directory $SELECTED_DIR is not accessible or not mounted."
+        exit 1
+    fi
+fi
+
+echo ""
+echo "Using directory: $SELECTED_DIR"
+echo "----------------------------------------"
+
+# Prompt for VM ID
+read -p "Enter the VM ID to search for: " VM_ID
+
+if [ -z "$VM_ID" ]; then
+    echo "Error: No VM ID provided."
+    exit 1
+fi
+
+# Find all matching backup files for the VM ID (sorted by modified time, newest first)
+mapfile -t BACKUP_FILES < <(ls -1t "${SELECTED_DIR}"/vzdump-qemu-"${VM_ID}"-*.vma* 2>/dev/null)
+
+if [ ${#BACKUP_FILES[@]} -eq 0 ]; then
+    echo "Error: No backup files matching 'vzdump-qemu-${VM_ID}-*.vma*' found in $SELECTED_DIR"
+    exit 1
+fi
+
+echo ""
+echo "========================================"
+echo " Available Backup Files for VM $VM_ID"
+echo "========================================"
+for i in "${!BACKUP_FILES[@]}"; do
+    FILENAME=$(basename "${BACKUP_FILES[$i]}")
+    echo "  $((i+1))) $FILENAME"
+done
+echo "========================================"
+
+# Prompt for file selection
+read -p "Select backup file to restore [1-${#BACKUP_FILES[@]}]: " FILE_CHOICE
+
+if ! [[ "$FILE_CHOICE" =~ ^[0-9]+$ ]] || [ "$FILE_CHOICE" -lt 1 ] || [ "$FILE_CHOICE" -gt "${#BACKUP_FILES[@]}" ]; then
+    echo "Error: Invalid selection."
+    exit 1
+fi
+
+SELECTED_FILE="${BACKUP_FILES[$((FILE_CHOICE-1))]}"
+
+# Prompt for Target VM ID
+read -p "Enter Target VM ID [Press Enter for $VM_ID]: " TARGET_ID
+TARGET_ID="${TARGET_ID:-$VM_ID}"
+
+# Prompt to start VM after restore
+START_VM=0
+read -p "Start VM automatically after restore? (y/N): " -n 1 -r START_REPLY
+echo
+if [[ $START_REPLY =~ ^[Yy]$ ]]; then
+    START_VM=1
+fi
+
+# 5-second pause
+echo "Pausing for 5 seconds..."
+sleep 5
+
+echo ""
+echo "----------------------------------------"
+echo "Directory:   $SELECTED_DIR"
+echo "File:        $(basename "$SELECTED_FILE")"
+echo "Target VM:   $TARGET_ID"
+echo "Start VM:    $([ $START_VM -eq 1 ] && echo "Yes" || echo "No")"
+echo "----------------------------------------"
+
+# Final confirmation before execution
+read -p "Are you sure you want to restore this backup? (y/N): " -n 1 -r
+echo
+if [[ $REPLY =~ ^[Yy]$ ]]; then
+    CMD="qmrestore \"$SELECTED_FILE\" \"$TARGET_ID\""
+    if [ $START_VM -eq 1 ]; then
+        CMD="$CMD --start 1"
+    fi
+    
+    echo "Executing: $CMD"
+    eval "$CMD"
+else
+    echo "Restore cancelled."
+    exit 0
+fi

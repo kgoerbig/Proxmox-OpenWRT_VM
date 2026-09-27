@@ -1,0 +1,10 @@
+#!/bin/sh
+cd /mnt/1TB_dock*
+
+rsync -av do* in* jell* prox* rest* sni* temp* WR* x86* /mnt/1TB_internal
+rsync -av do* in* prox* rest* sni* temp* WR* x86* /mnt/EXT-8TB
+rsync -av /usr/local/bin /mnt/1TB_internal/proxmox-backup/local
+rsync -av /mnt/1TB_internal/proxmox-backup /mnt/EXT-8TB
+rsync -av do* in* jell* prox* rest* sni* temp* WR* x86* /mnt//mnt/2TB_dock
+rsync -av /mnt/1TB_internal/proxmox-backup /mnt/1TB_dock
+

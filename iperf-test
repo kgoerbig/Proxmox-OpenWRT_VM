@@ -1,0 +1,154 @@
+#!/bin/sh
+
+SERVERS="
+37.19.206.20 5201
+66.35.22.79 30001
+atl.speedtest.clouvider.net 5200
+185.152.66.67 5201
+speedtest.chi11.us.leaseweb.net 5201
+185.93.1.65 5201
+chi.speedtest.clouvider.net 5201
+speedtest.nyc1.us.leaseweb.net 5201
+speedtest.wdc2.us.leaseweb.net 5201
+"
+
+TEMP_RESULTS="/tmp/iperf_results.txt"
+SORTED_SERVERS="/tmp/iperf_sorted.txt"
+rm -f "$TEMP_RESULTS" "$SORTED_SERVERS"
+
+printf "Pinging servers to sort by latency...\n\n"
+
+# 1. Ping each host and log latency to temporary file
+echo "$SERVERS" | grep -v '^$' | while read -r host port; do
+    ping_out=$(ping -c 2 -w 2 "$host" 2>/dev/null)
+
+    if [ $? -eq 0 ]; then
+        avg_ping=$(echo "$ping_out" | awk -F'/' 'END {print $5}' | cut -d'.' -f1)
+        if [ -n "$avg_ping" ]; then
+            printf "%05d %s %s\n" "$avg_ping" "$host" "$port" >> "$TEMP_RESULTS"
+            printf " - %-35s %s ms\n" "$host" "$avg_ping"
+        fi
+    else
+        printf " - %-35s [Unreachable]\n" "$host"
+    fi
+done
+
+if [ ! -s "$TEMP_RESULTS" ]; then
+    echo "\nError: No reachable iPerf3 servers found."
+    exit 1
+fi
+
+# 2. Sort servers by latency (lowest first)
+sort -n "$TEMP_RESULTS" > "$SORTED_SERVERS"
+rm -f "$TEMP_RESULTS"
+
+# Function to list numbered servers
+display_servers() {
+    echo "\nAvailable Servers (Sorted by Latency):"
+    echo "--------------------------------------------------"
+    idx=1
+    while read -r ping_ms host port; do
+        clean_ms=$(echo "$ping_ms" | sed 's/^0*//')
+        printf "[%2d] %-35s %4s ms (Port: %s)\n" "$idx" "$host" "${clean_ms:-0}" "$port"
+        idx=$((idx + 1))
+    done < "$SORTED_SERVERS"
+    echo "--------------------------------------------------"
+}
+
+# Function to get server details by number index
+get_server_by_num() {
+    target_num=$1
+    awk -v target="$target_num" 'NR == target {print $0}' "$SORTED_SERVERS"
+}
+
+# 3. Initial Display & Prompt
+display_servers
+
+read -r top_ping top_host top_port < "$SORTED_SERVERS"
+top_ping_clean=$(echo "$top_ping" | sed 's/^0*//')
+
+printf "\nNearest server is #1 (%s at %s ms).\n" "$top_host" "${top_ping_clean:-0}"
+printf "Do you want to run the test on this server? [y/N]: "
+read -r response
+
+case "$response" in
+    [yY][eE][sS]|[yY])
+        CURRENT_NUM=1
+        ;;
+    *)
+        printf "Enter the server number you wish to test [1-%d] (or 'q' to quit): " "$((idx - 1))"
+        read -r choice
+        case "$choice" in
+            [qQ]*) echo "Exiting."; rm -f "$SORTED_SERVERS"; exit 0 ;;
+            *) CURRENT_NUM=$choice ;;
+        esac
+        ;;
+esac
+
+# 4. Main Testing Loop
+TOTAL_SERVERS=$((idx - 1))
+
+while true; do
+    # Validate selection bounds
+    if [ -z "$CURRENT_NUM" ] || [ "$CURRENT_NUM" -lt 1 ] || [ "$CURRENT_NUM" -gt "$TOTAL_SERVERS" ]; then
+        echo "Invalid server choice."
+        printf "Enter a server number [1-%d]: " "$TOTAL_SERVERS"
+        read -r CURRENT_NUM
+        continue
+    fi
+
+    server_info=$(get_server_by_num "$CURRENT_NUM")
+    ping_ms=$(echo "$server_info" | awk '{print $1}')
+    host=$(echo "$server_info" | awk '{print $2}')
+    port=$(echo "$server_info" | awk '{print $3}')
+    clean_ms=$(echo "$ping_ms" | sed 's/^0*//')
+
+    echo "\n=================================================="
+    echo "Attempting test on [#$CURRENT_NUM] $host:$port (${clean_ms:-0} ms)..."
+    echo "=================================================="
+
+    iperf3 -c "$host" -p "$port" -R
+
+    if [ $? -eq 0 ]; then
+        echo "\nTest completed successfully on $host."
+        rm -f "$SORTED_SERVERS"
+        exit 0
+    else
+        echo "\n[!] Server #$CURRENT_NUM ($host) was busy or declined the connection."
+
+        NEXT_NUM=$((CURRENT_NUM + 1))
+
+        if [ "$NEXT_NUM" -le "$TOTAL_SERVERS" ]; then
+            printf "Try the next fastest server (#%d)? [Y/n/select]: " "$NEXT_NUM"
+            read -r retry
+            case "$retry" in
+                [nN][oO]|[nN])
+                    display_servers
+                    printf "Enter server number to try (or 'q' to quit): "
+                    read -r sel
+                    case "$sel" in
+                        [qQ]*) echo "Exiting."; rm -f "$SORTED_SERVERS"; exit 0 ;;
+                        *) CURRENT_NUM=$sel ;;
+                    esac
+                    ;;
+                [sS]*)
+                    display_servers
+                    printf "Enter server number to try: "
+                    read -r CURRENT_NUM
+                    ;;
+                *)
+                    CURRENT_NUM=$NEXT_NUM
+                    ;;
+            esac
+        else
+            echo "Reached the end of the server list."
+            display_servers
+            printf "Enter a server number to try (or 'q' to quit): "
+            read -r sel
+            case "$sel" in
+                [qQ]*) echo "Exiting."; rm -f "$SORTED_SERVERS"; exit 0 ;;
+                *) CURRENT_NUM=$sel ;;
+            esac
+        fi
+    fi
+done
